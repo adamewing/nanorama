@@ -92,55 +92,6 @@ def enrich(df, genome_len, target_len):
     return enrich_data
 
 
-def plot(read_data, enrich_data, plotdir, sample_size):
-    sample_size = int(sample_size)
-
-    if read_data.shape[0] < sample_size:
-        sample_size = read_data.shape[0]
-
-    sampled_data = read_data.sample(sample_size, random_state=1)
-
-    fig1 = px.strip(sampled_data, x="targeted", y="log10_length", hover_name="target", width=800, height=800)
-    fig1.update_traces(marker=dict(size=5, opacity=0.2))
-    fig1.update_layout(plot_bgcolor='#ffffff', bargap=0.1, scattergap=0.1)
-
-    fig2 = px.violin(sampled_data, x="targeted", y="log10_length", width=800, height=800)
-    fig1.update_layout(plot_bgcolor='#ffffff', bargap=0.1, scattergap=0.1)
-
-    fig3 = px.line(enrich_data, x='min_length', y='enrichment', markers=True, width=800)
-    fig3.update_layout(plot_bgcolor='#ffffff')
-
-    with open(plotdir+'/index.html', 'w') as out:
-        out.write(fig1.to_html(full_html=False, include_plotlyjs='cdn'))
-        out.write(fig2.to_html(full_html=False, include_plotlyjs='cdn'))
-        out.write(fig3.to_html(full_html=False, include_plotlyjs='cdn'))
-
-    logger.info(f'plotted to {plotdir}/index.html')
-
-
-def replot(args):
-    assert os.path.exists(args.plotdir)
-
-    genome_len = 0
-    target_len = 0
-
-    with open(args.plotdir+'/stats.txt') as stats:
-        for line in stats:
-            c = line.strip().split()
-            if c.startswith('genome'):
-                genome_len = int(c[-1])
-                break
-
-            if c.startswith('target'):
-                target_len = int(c[-1])
-                break
-
-    read_data = pd.read_csv(args.plotdir+'/read_data.csv')
-    enrich_data = pd.read_csv(args.plotdir+'/enrichment_data.csv')
-
-    plot(read_data, enrich_data, args.plotdir, args.samplesize)
-
-
 def main(args):
     chrom_bins = dd(dict)
     chrom_lens = {}
@@ -150,13 +101,6 @@ def main(args):
     if os.path.exists(args.plotdir):
         logger.warning(f'output directory already exists: {args.plotdir}')
         sys.exit(1)
-
-        # if args.replot:
-        #     logger.warning(f'replotting data from {args.plotdir}')
-        #     replot(args)
-
-        # else:
-        #     sys.exit()
 
     else:
         os.mkdir(args.plotdir)
@@ -211,7 +155,6 @@ def main(args):
                             enrich_data.to_csv(args.plotdir+'/enrichment_data.csv')
                             logger.info(f'saved current data to {args.plotdir}/enrichment_data.csv')
 
-                            #plot(read_data, enrich_data, args.plotdir, args.samplesize)9
                             done_fastqs[fn] = True
 
             sleep(2.0)
@@ -224,8 +167,6 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--fai', required=True, help='reference genome .fai (from samtools faidx)')
     parser.add_argument('-t', '--targets', required=True, help='target .bed')
     parser.add_argument('-d', '--plotdir', required=True, help='output directory')
-    parser.add_argument('-s', '--samplesize', default=10000, help='sample size for plotting (default = 10000)')
-    #parser.add_argument('--replot', action='store_true', help='replot data in --plotdir')
     args = parser.parse_args()
     main(args)
 
