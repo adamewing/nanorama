@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
 import os
-import argparse
-
-from dash import Dash, html, dcc
-import plotly.express as px
+import sys
+import dash
+from dash import html, dcc
 import pandas as pd
+import plotly.graph_objs as go
+import plotly.express as px
+from dash.dependencies import Input, Output
 
 import logging
 FORMAT = '%(asctime)s %(message)s'
@@ -15,15 +17,13 @@ logger.setLevel(logging.INFO)
 
 
 def load_data(plotdir):
-    assert os.path.exists(plotdir)
+    logger.info(f'load {plotdir}/read_data.csv')
+    return pd.read_csv(plotdir+'/read_data.csv')
+    
 
-    logger.info(f'load {args.plotdir}/read_data.csv')
-    read_data = pd.read_csv(args.plotdir+'/read_data.csv')
-
-    logger.info(f'load {args.plotdir}/enrichment_data.csv')
-    enrich_data = pd.read_csv(args.plotdir+'/enrichment_data.csv')
-
-    return read_data, enrich_data
+def load_enrich(plotdir):
+    logger.info(f'load {plotdir}/enrichment_data.csv')
+    return pd.read_csv(plotdir+'/enrichment_data.csv')
 
 
 def load_metrics(plotdir):
@@ -32,7 +32,7 @@ def load_metrics(plotdir):
     genome_len = 0
     target_len = 0
 
-    with open(args.plotdir+'/stats.txt') as stats:
+    with open(plotdir+'/stats.txt') as stats:
         for line in stats:
             c = line.strip().split()
             if c[0] == 'genome':
@@ -44,69 +44,134 @@ def load_metrics(plotdir):
     return genome_len, target_len
 
 
-def make_plots(read_data, enrich_data, plotdir, sample_size):
-    sample_size = int(sample_size)
+plotdir = sys.argv[1]
 
-    if read_data.shape[0] < sample_size:
-        sample_size = read_data.shape[0]
+if not os.path.exists(plotdir):
+    sys.exit(f'directory not found: {plotdir}')
 
-    sampled_data = read_data.sample(sample_size, random_state=1)
-
-    figs = {}
-
-    figs['strip'] = px.strip(sampled_data, x="targeted", y="log10_length", hover_name="target", width=500, height=500)
-    figs['strip'].update_traces(marker=dict(size=5, opacity=0.2))
-
-    figs['violin'] = px.violin(sampled_data, x="targeted", y="log10_length", width=500, height=500)
-
-    figs['line'] = px.line(enrich_data, x='min_length', y='enrichment', markers=True, width=1000, height=400)
-    figs['line'].update_layout(plot_bgcolor='#ffffff')
-
-    return figs
+df = load_data(plotdir)
+df_enrich = load_enrich(plotdir)
 
 
-def run_dash(args):
-    app = Dash(__name__)
+# Define the initial browser view
+initial_chr = 'chr11'
+initial_start = 1
+initial_end = 20000000
 
-    genome_len, target_len = load_metrics(args.plotdir)
-    read_data, enrich_data = load_data(args.plotdir)
+genome_len, target_len = load_metrics(plotdir)
+tgt_pct = '%.2f' % (target_len/genome_len*100)
 
-    tgt_pct = '%.2f' % (target_len/genome_len*100)
+# Filter the data for the initial view
+df_view = df[(df['chrom'] == initial_chr) & (df['start'] >= initial_start) & (df['end'] <= initial_end)]
 
-    figs = make_plots(read_data, enrich_data, args.plotdir, args.samplesize)
+app = dash.Dash(__name__)
 
-    app.layout = html.Div(children=[
-        html.H3(id='title', children='Live Read Monitor for ONT output'),
+app.layout = html.Div([
+    html.H3(id='title', children='Live Read Monitor for ONT output'),
+    html.Div(id='metrics', children=f'genome size: {genome_len} | target size: {target_len} ({tgt_pct}%)'),
 
-        html.Div(id='metrics', children=f'genome size: {genome_len} | target size: {target_len} ({tgt_pct}%)'),
-
-        dcc.Graph(
-            id='strip',
-            figure=figs['strip'],
-            style={'display': 'inline-block'}
+    html.H4(id='curve-desc', children=f'Overall enrichment:'),
+    
+    dcc.Graph(id='curve-plot'),
+    html.Div([
+        html.Button('Update Enrichment', id='update-button')
+    ]),
+    
+    html.H4(id='genome-desc', children=f'Enrichment Browser:'),
+    html.Div([
+        dcc.Input(
+            id='genome-coordinates-input',
+            type='text',
+            value=f'{initial_chr}:{initial_start}-{initial_end}'
         ),
+        html.Button('Submit', id='submit-button')
+    ]),
+    dcc.Graph(id='scatter-plot'),
+    dcc.Graph(id='violin-plot', style={'display': 'inline-block'}),
+    dcc.Graph(id='strip-plot', style={'display': 'inline-block'})
 
-        dcc.Graph(
-            id='violin',
-            figure=figs['violin'],
-            style={'display': 'inline-block'}
-        ),
+])
 
-        dcc.Graph(
-            id='line',
-            figure=figs['line']
+
+@app.callback(
+    Output('scatter-plot', 'figure'),
+    Input('submit-button', 'n_clicks'),
+    Input('genome-coordinates-input', 'value')
+)
+def update_figure(n_clicks, value):
+    chr, coords = value.split(':')
+    start, end = map(int, coords.split('-'))
+
+    df_view = df[(df['chrom'] == chr) & (df['start'] >= start) & (df['end'] <= end)]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=df_view['start'],
+        y=df_view['log10_length'],
+        mode='markers',
+        marker=dict(
+            color=df_view['targeted'].apply(lambda x: 'red' if x == 'Y' else 'blue')
         )
-    ])
+    ))
 
-    app.run_server(host="127.0.0.1", port="8050", debug=True)
+    fig.update_layout(
+        xaxis_title="Genome Position",
+        yaxis_title="Log Read Length",
+        dragmode="pan",
+        autosize=True,
+    )
+
+    return fig
+
+
+@app.callback(
+    Output('violin-plot', 'figure'),
+    Input('submit-button', 'n_clicks'),
+    Input('genome-coordinates-input', 'value')
+)
+def update_violin_figure(n_clicks, value):
+    chr, coords = value.split(':')
+    start, end = map(int, coords.split('-'))
+
+    df_view = df[(df['chrom'] == chr) & (df['start'] >= start) & (df['end'] <= end)]
+
+    fig = px.violin(df_view, x="targeted", y="log10_length", width=500, height=500)
+    fig.update_layout(plot_bgcolor='#ffffff')
+
+    return fig
+
+
+@app.callback(
+    Output('strip-plot', 'figure'),
+    Input('submit-button', 'n_clicks'),
+    Input('genome-coordinates-input', 'value')
+)
+def update_strip_figure(n_clicks, value):
+    chr, coords = value.split(':')
+    start, end = map(int, coords.split('-'))
+
+    df_view = df[(df['chrom'] == chr) & (df['start'] >= start) & (df['end'] <= end)]
+
+    fig = px.strip(df_view, x="targeted", y="log10_length", hover_name="target", width=500, height=500)
+    fig.update_layout(plot_bgcolor='#ffffff')
+
+    return fig
+
+
+@app.callback(
+    Output('curve-plot', 'figure'),
+    Input('update-button', 'n_clicks')
+)
+def update_curve_figure(n_clicks):
+
+    df_enrich = load_enrich(plotdir)
+
+    fig = px.line(df_enrich, x='min_length', y='enrichment', markers=True, width=1000, height=400)
+    fig.update_layout(plot_bgcolor='#ffffff')
+
+    return fig
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='fastq live coverage monitor')
-    parser.add_argument('-d', '--plotdir', required=True, help='output directory')
-    parser.add_argument('-s', '--samplesize', default=10000, help='sample size for plotting (default = 10000)')
-    args = parser.parse_args()
-    run_dash(args)
-
-    
+    app.run_server(debug=True)
 
