@@ -7,7 +7,7 @@ from dash import html, dcc
 import pandas as pd
 import plotly.graph_objs as go
 import plotly.express as px
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 
 import logging
 FORMAT = '%(asctime)s %(message)s'
@@ -84,7 +84,7 @@ app.layout = html.Div([
             type='text',
             value=f'{initial_chr}:{initial_start}-{initial_end}'
         ),
-        html.Button('Submit', id='submit-button')
+        html.Button('Submit', id='submit-button', n_clicks=0)
     ]),
     dcc.Graph(id='scatter-plot'),
     dcc.Graph(id='violin-plot', style={'display': 'inline-block'}),
@@ -94,18 +94,35 @@ app.layout = html.Div([
 
 
 @app.callback(
-    Output('scatter-plot', 'figure'),
-    Input('submit-button', 'n_clicks'),
-    Input('genome-coordinates-input', 'value')
+    [Output('scatter-plot', 'figure'),
+    Output('violin-plot', 'figure'),
+    Output('strip-plot', 'figure')],
+
+    [Input('submit-button', 'n_clicks'),
+    Input('scatter-plot', 'relayoutData')],
+
+    [State('genome-coordinates-input', 'value')]
 )
-def update_figure(n_clicks, value):
-    chr, coords = value.split(':')
+def update_figure(n_clicks, relayoutData, value):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        chr, coords = initial_chr, f"{initial_start}-{initial_end}"
+    elif ctx.triggered[0]['prop_id'].split('.')[0] == 'submit-button':
+        chr, coords = value.split(':')
+    else:
+        chr, coords = value.split(':')
+        if 'xaxis.range[0]' in relayoutData:
+            start, end = int(relayoutData['xaxis.range[0]']), int(relayoutData['xaxis.range[1]'])
+            start = max(0, start)  # Ensure start is not less than 0
+            coords = f"{start}-{end}"
+            value = f"{chr}:{coords}"
+
     start, end = map(int, coords.split('-'))
 
     df_view = df[(df['chrom'] == chr) & (df['start'] >= start) & (df['end'] <= end)]
 
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
+    scatter_fig = go.Figure()
+    scatter_fig.add_trace(go.Scatter(
         x=df_view['start'],
         y=df_view['log10_length'],
         mode='markers',
@@ -114,48 +131,33 @@ def update_figure(n_clicks, value):
         )
     ))
 
-    fig.update_layout(
+    scatter_fig.update_layout(
         xaxis_title="Genome Position",
         yaxis_title="Log Read Length",
         dragmode="pan",
         autosize=True,
     )
 
-    return fig
+    scatter_fig.update_xaxes(range=[df_view['start'].min(), df_view['end'].max()])
+
+    violin_fig = px.violin(df_view, x="targeted", y="log10_length", width=500, height=500)
+    strip_fig = px.strip(df_view, x="targeted", y="log10_length", hover_name="target", width=500, height=500)
+
+    return scatter_fig, violin_fig, strip_fig
 
 
 @app.callback(
-    Output('violin-plot', 'figure'),
-    Input('submit-button', 'n_clicks'),
-    Input('genome-coordinates-input', 'value')
+    Output('genome-coordinates-input', 'value'),
+    Input('scatter-plot', 'relayoutData'),
+    State('genome-coordinates-input', 'value')
 )
-def update_violin_figure(n_clicks, value):
-    chr, coords = value.split(':')
-    start, end = map(int, coords.split('-'))
-
-    df_view = df[(df['chrom'] == chr) & (df['start'] >= start) & (df['end'] <= end)]
-
-    fig = px.violin(df_view, x="targeted", y="log10_length", width=500, height=500)
-    fig.update_layout(plot_bgcolor='#ffffff')
-
-    return fig
-
-
-@app.callback(
-    Output('strip-plot', 'figure'),
-    Input('submit-button', 'n_clicks'),
-    Input('genome-coordinates-input', 'value')
-)
-def update_strip_figure(n_clicks, value):
-    chr, coords = value.split(':')
-    start, end = map(int, coords.split('-'))
-
-    df_view = df[(df['chrom'] == chr) & (df['start'] >= start) & (df['end'] <= end)]
-
-    fig = px.strip(df_view, x="targeted", y="log10_length", hover_name="target", width=500, height=500)
-    fig.update_layout(plot_bgcolor='#ffffff')
-
-    return fig
+def update_input(relayoutData, value):
+    if relayoutData and 'xaxis.range[0]' in relayoutData:
+        chr, _ = value.split(':')
+        start, end = int(relayoutData['xaxis.range[0]']), int(relayoutData['xaxis.range[1]'])
+        start = max(0, start) # Ensure start is not less than 0
+        return f"{chr}:{start}-{end}"
+    return value
 
 
 @app.callback(
