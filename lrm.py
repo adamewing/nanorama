@@ -30,8 +30,6 @@ logger.setLevel(logging.INFO)
 
 def map_reads(fastq, ref, read_data, targets, threads=8):
 
-    forest = dd(Intersecter)
-
     FNULL = open(os.devnull, 'w')
 
     mm2_cmd  = ['minimap2', '-t', str(threads), '-x', 'map-ont', '-a', ref, fastq]
