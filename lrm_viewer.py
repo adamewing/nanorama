@@ -23,8 +23,15 @@ logger.setLevel(logging.INFO)
 
 def load_data(plotdir):
     logger.info(f'load {plotdir}/read_data.csv')
+    #sz = os.path.getsize(plotdir+'/read_data.csv')
     return pd.read_csv(plotdir+'/read_data.csv')
-    
+
+
+def new_data(plotdir, old_sz):
+    if old_sz != os.path.getsize(plotdir+'/read_data.csv'):
+        return True
+    return False
+
 
 def load_enrich(plotdir):
     logger.info(f'load {plotdir}/enrichment_data.csv')
@@ -67,8 +74,6 @@ def load_targets(bed_fn):
 def dash_lrt(plotdir, target_bed):
     if not os.path.exists(plotdir):
         sys.exit(f'directory not found: {plotdir}')
-
-    df = load_data(plotdir)
     
     targets = load_targets(target_bed)
 
@@ -79,6 +84,8 @@ def dash_lrt(plotdir, target_bed):
 
     genome_len, target_len = load_metrics(plotdir)
     tgt_pct = '%.2f' % (target_len/genome_len*100)
+
+    df = load_data(plotdir)
 
     # Filter the data for the initial view
     df_view = df[(df['chrom'] == initial_chr) & (df['start'] >= initial_start) & (df['end'] <= initial_end)]
@@ -93,7 +100,7 @@ def dash_lrt(plotdir, target_bed):
         
         dcc.Graph(id='curve-plot'),
         html.Div([
-            html.Button('Update Enrichment', id='update-button')
+            html.Button('Update Enrichment', id='update-curve-button')
         ]),
         
         html.H4(id='genome-desc', children=f'Enrichment Browser:'),
@@ -108,7 +115,6 @@ def dash_lrt(plotdir, target_bed):
         dcc.Graph(id='scatter-plot'),
         dcc.Graph(id='violin-plot', style={'display': 'inline-block'}),
         dcc.Graph(id='strip-plot', style={'display': 'inline-block'})
-
     ])
 
 
@@ -123,6 +129,9 @@ def dash_lrt(plotdir, target_bed):
         [State('genome-coordinates-input', 'value')]
     )
     def update_figure(n_clicks, relayoutData, value):
+
+        df = load_data(plotdir)
+
         ctx = dash.callback_context
         if not ctx.triggered:
             chr, coords = initial_chr, f"{initial_start}-{initial_end}"
@@ -222,7 +231,7 @@ def dash_lrt(plotdir, target_bed):
 
     @app.callback(
         Output('curve-plot', 'figure'),
-        Input('update-button', 'n_clicks')
+        Input('update-curve-button', 'n_clicks')
     )
     def update_curve_figure(n_clicks):
 
