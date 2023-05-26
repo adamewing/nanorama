@@ -27,6 +27,10 @@ def load_data(plotdir):
     return pd.read_csv(plotdir+'/read_data.csv')
 
 
+def reload_data(plotdir, df):
+    logger.info(f'load {plotdir}/read_data.csv')
+    return pd.read_csv(plotdir+'/read_data.csv')
+
 def new_data(plotdir, old_sz):
     if old_sz != os.path.getsize(plotdir+'/read_data.csv'):
         return True
@@ -80,12 +84,14 @@ def dash_lrt(plotdir, target_bed):
     # Define the initial browser view
     initial_chr = 'chr11'
     initial_start = 1
-    initial_end = 20000000
+    initial_end = 50000000
 
     genome_len, target_len = load_metrics(plotdir)
     tgt_pct = '%.2f' % (target_len/genome_len*100)
 
+    global df
     df = load_data(plotdir)
+    sz = os.path.getsize(plotdir+'/read_data.csv')
 
     # Filter the data for the initial view
     df_view = df[(df['chrom'] == initial_chr) & (df['start'] >= initial_start) & (df['end'] <= initial_end)]
@@ -114,7 +120,8 @@ def dash_lrt(plotdir, target_bed):
         ]),
         dcc.Graph(id='scatter-plot'),
         dcc.Graph(id='violin-plot', style={'display': 'inline-block'}),
-        dcc.Graph(id='strip-plot', style={'display': 'inline-block'})
+        dcc.Graph(id='strip-plot', style={'display': 'inline-block'}),
+        dcc.Store(id="df-size", data=sz)
     ])
 
 
@@ -124,13 +131,19 @@ def dash_lrt(plotdir, target_bed):
         Output('strip-plot', 'figure')],
 
         [Input('submit-button', 'n_clicks'),
-        Input('scatter-plot', 'relayoutData')],
+        Input('scatter-plot', 'relayoutData'),
+        Input('df-size', 'data')],
 
         [State('genome-coordinates-input', 'value')]
     )
-    def update_figure(n_clicks, relayoutData, value):
+    def update_figure(n_clicks, relayoutData, sz, value):
+        current_sz = os.path.getsize(plotdir+'/read_data.csv')
+        updated_sz = current_sz != sz
 
-        df = load_data(plotdir)
+        global df
+
+        if updated_sz:
+            df = load_data(plotdir)
 
         ctx = dash.callback_context
         if not ctx.triggered:
