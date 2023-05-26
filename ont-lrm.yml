@@ -1,11 +1,16 @@
 name: ont-lrm
 channels:
+  - bioconda
   - conda-forge
   - defaults
 dependencies:
   - dash=2.9.3=pyhd8ed1ab_0
   - pandas=2.0.1=py311h320fe9a_0
   - psutil=5.9.5=py311h2582759_0
+  - dash-core-components=2.0.0=pyhd8ed1ab_1
+  - dash-html-components=2.0.0=pyhd8ed1ab_1
+  - samtools=1.17=hd87286a_1
+  - minimap2=2.26=he4a0461_1
   - pip:
       - bx-python==0.9.0
       - pysam==0.21.0
