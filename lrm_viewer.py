@@ -27,10 +27,6 @@ def load_data(plotdir):
     return pd.read_csv(plotdir+'/read_data.csv')
 
 
-def reload_data(plotdir, df):
-    logger.info(f'load {plotdir}/read_data.csv')
-    return pd.read_csv(plotdir+'/read_data.csv')
-
 def new_data(plotdir, old_sz):
     if old_sz != os.path.getsize(plotdir+'/read_data.csv'):
         return True
@@ -252,6 +248,10 @@ def dash_lrt(plotdir, target_bed):
 
         fig = px.line(df_enrich, x='min_length', y='enrichment', markers=True, width=1000, height=400)
         fig.update_layout(plot_bgcolor='#ffffff')
+
+        max_e = int(df_enrich['enrichment'].max()+1)
+        fig.update_layout(yaxis_range=[0,max_e])
+
 
         return fig
 
