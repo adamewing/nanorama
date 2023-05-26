@@ -257,9 +257,9 @@ def dash_lrt(plotdir, target_bed):
 
     if args.external:
         app.run_server(host='0.0.0.0', debug=True)
-        
+
     else:
-        app.run_server(debug=True)        
+        app.run_server(debug=True)
 
 
 if __name__ == '__main__':
