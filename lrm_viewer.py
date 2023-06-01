@@ -78,9 +78,9 @@ def dash_lrt(plotdir, target_bed):
     targets = load_targets(target_bed)
 
     # Define the initial browser view
-    initial_chr = 'chr11'
-    initial_start = 1
-    initial_end = 50000000
+    initial_chr = 'chr19'
+    initial_start = 52785323
+    initial_end = 54768393
 
     genome_len, target_len = load_metrics(plotdir)
     tgt_pct = '%.2f' % (target_len/genome_len*100)
@@ -92,19 +92,14 @@ def dash_lrt(plotdir, target_bed):
     # Filter the data for the initial view
     df_view = df[(df['chrom'] == initial_chr) & (df['start'] >= initial_start) & (df['end'] <= initial_end)]
 
+    # Create initial scatter plot
+    scatter_fig = px.scatter(df_view, x="start", y="log10_length", color="targeted", color_discrete_map={"Y": "red", "N": "blue"})
+
     app = dash.Dash(__name__)
 
     app.layout = html.Div([
         html.H3(id='title', children='Live Read Monitor for ONT output'),
         html.Div(id='metrics', children=f'genome size: {genome_len} | target size: {target_len} ({tgt_pct}%)'),
-
-        html.H4(id='curve-desc', children=f'Overall enrichment:'),
-        
-        dcc.Graph(id='curve-plot'),
-        html.Div([
-            html.Button('Update Enrichment', id='update-curve-button')
-        ]),
-        
         html.H4(id='genome-desc', children=f'Enrichment Browser:'),
         html.Div([
             dcc.Input(
@@ -114,10 +109,16 @@ def dash_lrt(plotdir, target_bed):
             ),
             html.Button('Submit', id='submit-button', n_clicks=0)
         ]),
-        dcc.Graph(id='scatter-plot'),
+        dcc.Graph(id='scatter-plot', figure=scatter_fig, config={'scrollZoom': True}),
         dcc.Graph(id='violin-plot', style={'display': 'inline-block'}),
         dcc.Graph(id='strip-plot', style={'display': 'inline-block'}),
-        dcc.Store(id="df-size", data=sz)
+        dcc.Store(id="df-size", data=sz),
+        html.H4(id='curve-desc', children=f'Overall enrichment:'),
+        
+        dcc.Graph(id='curve-plot'),
+        html.Div([
+            html.Button('Update Enrichment', id='update-curve-button')
+        ])
     ])
 
 
@@ -176,6 +177,7 @@ def dash_lrt(plotdir, target_bed):
         )
 
         scatter_fig.update_xaxes(range=[df_view['start'].min(), df_view['end'].max()])
+        scatter_fig.update_yaxes(range=[df_view['log10_length'].min()-.5, df_view['log10_length'].max()+.5], fixedrange=True)
 
         # draw targets
         
