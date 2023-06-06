@@ -47,6 +47,9 @@ options:
 ```
 The `-d` and `-t` options should match those given to `lrm_mapper.py`. The `--tx` option can be used to show an additional track from a .bed file (optionally BED3+1 with column 4 being an annotation).
 
-An example of the UI may be accessed [here](http://genome.coffee:8050).
+A running example of the UI may be accessed [here](http://genome.coffee:8050), if that is inaccessible (down or your local IT policy blocks port 8050) here's a screenshot:
+
+![screencapture-genome-coffee-8050-2023-06-06-13_00_06](https://github.com/adamewing/ont-lrm/assets/1037202/0ccd0743-4761-4ca0-8528-978bd1945b5c)
+
 
 
