@@ -70,6 +70,32 @@ def index_fai(fasta):
     return fai_out
 
 
+def infer_sample_names(paths):
+    path_parts = {}
+    for path in paths:
+        components = path.split('/')
+        for i, component in enumerate(components):
+            if i not in path_parts:
+                path_parts[i] = {}
+            if component in path_parts[i]:
+                path_parts[i][component] += 1
+            else:
+                path_parts[i][component] = 1
+
+    sample_names = {}
+
+    for index in path_parts:
+        if all(count == 1 for count in path_parts[index].values()):
+            for path in paths:
+                sample_names[path] = path.split('/')[index]
+            break # return the leftmost unique index
+
+    for path in paths:
+        sample_names[path] = path
+
+    return sample_names
+
+
 def start_dash(plotdir, targets):
     cmd = ['lrm_viewer.py', '-d', plotdir, '-t', targets]
     #dash_proc = subprocess.Popen(cmd, start_new_session=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -77,7 +103,7 @@ def start_dash(plotdir, targets):
     return dash_proc
 
 
-def map_reads(fastq, ref, read_data, targets, threads=8):
+def map_reads(fastq, ref, read_data, targets, sample_name, threads=8):
 
     FNULL = open(os.devnull, 'w')
 
@@ -124,7 +150,7 @@ def check_fopen(fn):
     return False
 
 
-def enrich(df, genome_len, target_len):
+def enrich(df, genome_len, target_len, sample_name):
     enrich_data = pd.DataFrame(columns=['min_length', 'on_tgt_cov', 'off_tgt_cov', 'enrichment'])
 
     for minlen in range(100,1225,25):
@@ -188,8 +214,15 @@ def main(args):
 
     started_dash = False
 
+    outdirs = args.outdir[0]
+    sample_names = infer_sample_names(outdirs)
+
+    logger.info('inferred sample names from paths:')
+    for path, name in sample_names.items():
+        logger.info(f'{path}:\t{name}')
+
     while True:
-        for outdir in args.outdir[0]:
+        for outdir in outdirs:
             for fn in os.listdir(outdir):
                 if fn.endswith('.fastq') or fn.endswith('.fastq.gz'):
                     if fn not in done_fastqs:
@@ -199,11 +232,11 @@ def main(args):
 
                         logger.info(f'mapping {fn} and updating read data')
 
-                        read_data = map_reads(outdir+'/'+fn, mmi_fn, read_data, targets)
+                        read_data = map_reads(outdir+'/'+fn, mmi_fn, read_data, targets, sample_names[outdir])
                         read_data.to_csv(args.plotdir+'/read_data.csv')
                         logger.info(f'saved current data to {args.plotdir}/read_data.csv')
 
-                        enrich_data = enrich(read_data, genome_len, target_len)
+                        enrich_data = enrich(read_data, genome_len, target_len, sample_names[outdir])
                         enrich_data.to_csv(args.plotdir+'/enrichment_data.csv')
                         logger.info(f'saved current data to {args.plotdir}/enrichment_data.csv')
 
