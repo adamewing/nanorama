@@ -155,65 +155,65 @@ def main(args):
     else:
         os.mkdir(args.plotdir)
 
-        assert os.path.exists(args.plotdir)
+    assert os.path.exists(args.plotdir)
 
-        with open(fai_fn) as fai:
-            for line in fai:
-                chrom, length = line.strip().split()[:2]
-                length = int(length)
-                chrom_lens[chrom] = length
+    with open(fai_fn) as fai:
+        for line in fai:
+            chrom, length = line.strip().split()[:2]
+            length = int(length)
+            chrom_lens[chrom] = length
 
-        genome_len = sum(list(chrom_lens.values()))
-        logger.info(f'genome length: {genome_len}')
+    genome_len = sum(list(chrom_lens.values()))
+    logger.info(f'genome length: {genome_len}')
 
-        targets = dd(Intersecter)
-        target_len = 0
+    targets = dd(Intersecter)
+    target_len = 0
 
-        with open(args.targets) as bed:
-            for line in bed:
-                c = line.strip().split()
-                chrom, start, end = c[:3]
-                start = int(start)
-                end = int(end)
-                target_len += (end-start)
-                targets[chrom].add_interval(Interval(start, end))
+    with open(args.targets) as bed:
+        for line in bed:
+            c = line.strip().split()
+            chrom, start, end = c[:3]
+            start = int(start)
+            end = int(end)
+            target_len += (end-start)
+            targets[chrom].add_interval(Interval(start, end))
 
-        logger.info(f'total target length: {target_len}')
+    logger.info(f'total target length: {target_len}')
 
-        with open(args.plotdir+'/stats.txt', 'w') as stats_out:
-            stats_out.write(f'command line: {" ".join(sys.argv)}\n')
-            stats_out.write(f'genome length: {genome_len}\ntarget length: {target_len}\n')
+    with open(args.plotdir+'/stats.txt', 'w') as stats_out:
+        stats_out.write(f'command line: {" ".join(sys.argv)}\n')
+        stats_out.write(f'genome length: {genome_len}\ntarget length: {target_len}\n')
 
-        done_fastqs = {}
+    done_fastqs = {}
 
-        started_dash = False
+    started_dash = False
 
-        while True:
-            for outdir in args.outdir[0]:
-                for fn in os.listdir(outdir):
-                    if fn.endswith('.fastq') or fn.endswith('.fastq.gz'):
-                        if fn not in done_fastqs:
-                            if check_fopen(fn):
-                                logger.info(f'file is open: {fn}, skip for now')
-                                continue
+    while True:
+        for outdir in args.outdir[0]:
+            for fn in os.listdir(outdir):
+                if fn.endswith('.fastq') or fn.endswith('.fastq.gz'):
+                    if fn not in done_fastqs:
+                        if check_fopen(fn):
+                            logger.info(f'file is open: {fn}, skip for now')
+                            continue
 
-                            logger.info(f'mapping {fn} and updating read data')
+                        logger.info(f'mapping {fn} and updating read data')
 
-                            read_data = map_reads(outdir+'/'+fn, mmi_fn, read_data, targets)
-                            read_data.to_csv(args.plotdir+'/read_data.csv')
-                            logger.info(f'saved current data to {args.plotdir}/read_data.csv')
+                        read_data = map_reads(outdir+'/'+fn, mmi_fn, read_data, targets)
+                        read_data.to_csv(args.plotdir+'/read_data.csv')
+                        logger.info(f'saved current data to {args.plotdir}/read_data.csv')
 
-                            enrich_data = enrich(read_data, genome_len, target_len)
-                            enrich_data.to_csv(args.plotdir+'/enrichment_data.csv')
-                            logger.info(f'saved current data to {args.plotdir}/enrichment_data.csv')
+                        enrich_data = enrich(read_data, genome_len, target_len)
+                        enrich_data.to_csv(args.plotdir+'/enrichment_data.csv')
+                        logger.info(f'saved current data to {args.plotdir}/enrichment_data.csv')
 
-                            if not started_dash and not args.maponly:
-                                start_dash(args.plotdir, args.targets)
-                                started_dash = True
+                        if not started_dash and not args.maponly:
+                            start_dash(args.plotdir, args.targets)
+                            started_dash = True
 
-                            done_fastqs[fn] = True
+                        done_fastqs[fn] = True
 
-            sleep(2.0)
+        sleep(2.0)
 
 
 if __name__ == '__main__':
