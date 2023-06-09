@@ -8,6 +8,7 @@ from collections import defaultdict as dd
 import dash
 from dash import html, dcc
 import pandas as pd
+from plotly.subplots import make_subplots
 import plotly.graph_objs as go
 import plotly.express as px
 from dash.dependencies import Input, Output, State
@@ -88,8 +89,8 @@ def dash_lrt(plotdir, target_bed, tx_bed):
 
     # Define the initial browser view
     initial_chr = 'chr19'
-    initial_start = 42785323
-    initial_end = 54768393
+    initial_start = 44047754
+    initial_end = 46011212
 
     genome_len, target_len = load_metrics(plotdir)
     tgt_pct = '%.2f' % (target_len/genome_len*100)
@@ -168,25 +169,37 @@ def dash_lrt(plotdir, target_bed, tx_bed):
 
         df_view = df[(df['chrom'] == chr) & (df['start'] >= start) & (df['end'] <= end)]
 
-        scatter_fig = go.Figure()
-        scatter_fig.add_trace(go.Scatter(
-            x=df_view['start'],
-            y=df_view['log10_length'],
-            mode='markers',
-            marker=dict(
-                color=df_view['targeted'].apply(lambda x: 'red' if x == 'Y' else 'blue'),
-                opacity=0.5
+        #scatter_fig = go.Figure()
+
+        samples = df['sample'].unique()
+
+        scatter_fig = make_subplots(rows=len(samples), cols=1, shared_xaxes=True, vertical_spacing=0)
+
+        for i, sample in enumerate(samples):
+            df_subset = df_view[df_view['sample'] == sample]
+
+            scatter_fig.add_trace(go.Scatter(
+                x=df_subset['start'],
+                y=df_subset['log10_length'],
+                mode='markers',
+                marker=dict(
+                    color=df_subset['targeted'].apply(lambda x: 'red' if x == 'Y' else 'blue'),
+                    opacity=0.5
+                ),
+            ),
+            row = i+1,
+            col = 1,
             )
-        ))
 
         scatter_fig.update_layout(
-            xaxis_title="Genome Position (green = targets)",
-            yaxis_title="Log Read Length",
+            #xaxis_title="Genome Position (green = targets)",
+            #yaxis_title="Log Read Length",
             height=600,
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             dragmode="pan",
             autosize=True,
+            showlegend=False,
         )
 
         scatter_fig.update_xaxes(range=[df_view['start'].min(), df_view['end'].max()])
@@ -197,23 +210,26 @@ def dash_lrt(plotdir, target_bed, tx_bed):
         tgt_track_ymax = max(df_view['log10_length']) + 0.1
         tgt_track_ymin = min(df_view['log10_length']) - 0.1
         
-
         target_boxes= []
-        for rec in targets[chr].find(start, end):
-            target_boxes.append({
-                'type': 'rect',
-                'xref': 'x',
-                'yref': 'y',
-                'x0': rec.start,
-                'y0': tgt_track_ymax,
-                'x1': rec.end,
-                'y1': tgt_track_ymin,
-                'fillcolor': 'green',
-                'opacity': 0.2,
-                'line': {
-                    'width': 0,
-                },
-            })
+        for i in range(len(samples)):
+            xref = f'x{i+1}'
+            yref = f'y{i+1}'
+    
+            for rec in targets[chr].find(start, end):
+                target_boxes.append({
+                    'type': 'rect',
+                    'xref': xref,
+                    'yref': yref,
+                    'x0': rec.start,
+                    'y0': tgt_track_ymax,
+                    'x1': rec.end,
+                    'y1': tgt_track_ymin,
+                    'fillcolor': 'green',
+                    'opacity': 0.2,
+                    'line': {
+                        'width': 0,
+                    },
+                })
         
 
         # transcript track
@@ -242,28 +258,32 @@ def dash_lrt(plotdir, target_bed, tx_bed):
         if end-start < 1e6:
             font_vis = 'black'
 
-        for rec in tx[chr].find(start, end):
-            sl = stacklevel[rec.value]
-            y0 = tx_track_ymax - tx_item_height*sl
-            y1 = y0 - tx_item_height
-            target_boxes.append({
-                'type': 'rect',
-                'xref': 'x',
-                'yref': 'y',
-                'x0': rec.start,
-                'y0': y0,
-                'x1': rec.end,
-                'y1': y1,
-                'fillcolor': 'orange',
-                'opacity': 0.5,
-                'line': {
-                    'width': 1,
-                },
-                'label': {
-                    'text': rec.value,
-                    'font': {'color': font_vis}
-                },
-            })
+        for i in range(len(samples)):
+            xref = f'x{i+1}'
+            yref = f'y{i+1}'
+
+            for rec in tx[chr].find(start, end):
+                sl = stacklevel[rec.value]
+                y0 = tx_track_ymax - tx_item_height*sl
+                y1 = y0 - tx_item_height
+                target_boxes.append({
+                    'type': 'rect',
+                    'xref': xref,
+                    'yref': yref,
+                    'x0': rec.start,
+                    'y0': y0,
+                    'x1': rec.end,
+                    'y1': y1,
+                    'fillcolor': 'orange',
+                    'opacity': 0.5,
+                    'line': {
+                        'width': 1,
+                    },
+                    'label': {
+                        'text': rec.value,
+                        'font': {'color': font_vis}
+                    },
+                })
 
         scatter_fig.update_layout(shapes=target_boxes)
 
@@ -273,6 +293,7 @@ def dash_lrt(plotdir, target_bed, tx_bed):
                                width=500,
                                height=500,
                                color="targeted",
+                               facet_col="sample",
                                color_discrete_map={"Y": "red", "N": "blue"}
                                )
         
@@ -283,6 +304,7 @@ def dash_lrt(plotdir, target_bed, tx_bed):
                              width=500,
                              height=500,
                              color="targeted",
+                             facet_col="sample",
                              color_discrete_map={"Y": "red", "N": "blue"}
                              )
 
@@ -313,7 +335,7 @@ def dash_lrt(plotdir, target_bed, tx_bed):
 
         df_enrich = load_enrich(plotdir)
 
-        fig = px.line(df_enrich, x='min_length', y='enrichment', markers=True, width=1000, height=400)
+        fig = px.line(df_enrich, x='min_length', y='enrichment', line_group='sample', color='sample', markers=True, width=1000, height=400)
         fig.update_layout(plot_bgcolor='#ffffff')
 
         max_e = int(df_enrich['enrichment'].max()+1)
