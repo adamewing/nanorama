@@ -173,7 +173,7 @@ def dash_lrt(plotdir, target_bed, tx_bed):
 
         samples = df['sample'].unique()
 
-        scatter_fig = make_subplots(rows=len(samples), cols=1, shared_xaxes=True, vertical_spacing=0)
+        scatter_fig = make_subplots(rows=len(samples), cols=1, shared_xaxes=True, vertical_spacing=0.05, subplot_titles=samples)
 
         for i, sample in enumerate(samples):
             df_subset = df_view[df_view['sample'] == sample]
@@ -201,6 +201,11 @@ def dash_lrt(plotdir, target_bed, tx_bed):
             autosize=True,
             showlegend=False,
         )
+
+        for i, sample in enumerate(samples):
+            scatter_fig.update_yaxes(title_text='Log Read Length', row=i+1, col=1)
+
+        scatter_fig.update_xaxes(title_text='Genome Position (green = targets)', row=len(samples), col=1)
 
         scatter_fig.update_xaxes(range=[df_view['start'].min(), df_view['end'].max()])
         scatter_fig.update_yaxes(range=[df_view['log10_length'].min()-1.2, df_view['log10_length'].max()+.2], fixedrange=True)
