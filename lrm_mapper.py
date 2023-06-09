@@ -72,6 +72,12 @@ def index_fai(fasta):
 
 def infer_sample_names(paths):
     path_parts = {}
+    sample_names = {}
+
+    if len(paths) == 1:
+        sample_names[paths[0]] = 'sample'
+        return sample_names
+
     for path in paths:
         components = path.split('/')
         for i, component in enumerate(components):
@@ -82,13 +88,12 @@ def infer_sample_names(paths):
             else:
                 path_parts[i][component] = 1
 
-    sample_names = {}
-
     for index in path_parts:
         if all(count == 1 for count in path_parts[index].values()):
             for path in paths:
                 sample_names[path] = path.split('/')[index]
-            break # return the leftmost unique index
+            return sample_names
+
 
     for path in paths:
         sample_names[path] = path
@@ -129,7 +134,7 @@ def map_reads(fastq, ref, read_data, targets, sample_name, threads=8):
                     target = f'{read.reference_name}:{t.start}-{t.end}'
                     targeted = 'Y'
 
-            read_data.loc[str(uuid4())] = [target, targeted, read.reference_name, read.reference_start, read.reference_end, len(read.seq), np.log10(len(read.seq))]
+            read_data.loc[str(uuid4())] = [target, targeted, read.reference_name, read.reference_start, read.reference_end, len(read.seq), np.log10(len(read.seq)), sample_name]
             r += 1
 
     logger.info(f'mapped {r} reads from {fastq}')
@@ -150,17 +155,21 @@ def check_fopen(fn):
     return False
 
 
-def enrich(df, genome_len, target_len, sample_name):
-    enrich_data = pd.DataFrame(columns=['min_length', 'on_tgt_cov', 'off_tgt_cov', 'enrichment'])
+def enrich(df, genome_len, target_len):
+    enrich_data = pd.DataFrame(columns=['min_length', 'on_tgt_cov', 'off_tgt_cov', 'enrichment', 'sample'])
+
+    sample_names = list(set(df['sample']))
 
     for minlen in range(100,1225,25):
-        df_len = df[df['length'] >= minlen]
-        offtgt_len = genome_len-target_len
-        offtgt_cov = df_len[df_len['targeted'] == 'N']['length'].sum()
-        target_cov = df_len[df_len['targeted'] == 'Y']['length'].sum()
-        enr = (target_cov/target_len)/(offtgt_cov/offtgt_len)
+        for sample in sample_names:
+            df_len = df[df['length'] >= minlen]
+            df_len = df_len[df_len['sample'] == sample]
+            offtgt_len = genome_len-target_len
+            offtgt_cov = df_len[df_len['targeted'] == 'N']['length'].sum()
+            target_cov = df_len[df_len['targeted'] == 'Y']['length'].sum()
+            enr = (target_cov/target_len)/(offtgt_cov/offtgt_len)
 
-        enrich_data.loc[str(uuid4())] = [minlen, target_cov, offtgt_cov, enr]
+            enrich_data.loc[str(uuid4())] = [minlen, target_cov, offtgt_cov, enr, sample]
 
     return enrich_data
 
@@ -172,7 +181,7 @@ def main(args):
     chrom_bins = dd(dict)
     chrom_lens = {}
 
-    read_data = pd.DataFrame(columns=['target', 'targeted', 'chrom', 'start', 'end', 'length', 'log10_length'])
+    read_data = pd.DataFrame(columns=['target', 'targeted', 'chrom', 'start', 'end', 'length', 'log10_length', 'sample'])
 
     if os.path.exists(args.plotdir):
         logger.warning(f'output directory already exists: {args.plotdir}')
@@ -219,7 +228,7 @@ def main(args):
 
     logger.info('inferred sample names from paths:')
     for path, name in sample_names.items():
-        logger.info(f'{path}:\t{name}')
+        logger.info(f'{path}: {name}')
 
     while True:
         for outdir in outdirs:
@@ -236,7 +245,7 @@ def main(args):
                         read_data.to_csv(args.plotdir+'/read_data.csv')
                         logger.info(f'saved current data to {args.plotdir}/read_data.csv')
 
-                        enrich_data = enrich(read_data, genome_len, target_len, sample_names[outdir])
+                        enrich_data = enrich(read_data, genome_len, target_len)
                         enrich_data.to_csv(args.plotdir+'/enrichment_data.csv')
                         logger.info(f'saved current data to {args.plotdir}/enrichment_data.csv')
 
