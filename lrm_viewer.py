@@ -186,6 +186,8 @@ def dash_lrt(plotdir, target_bed, tx_bed):
                     color=df_subset['targeted'].apply(lambda x: 'red' if x == 'Y' else 'blue'),
                     opacity=0.5
                 ),
+                customdata=df_subset['length'],
+                hovertemplate="<br>length:%{customdata}"
             ),
             row = i+1,
             col = 1,
@@ -349,10 +351,10 @@ def dash_lrt(plotdir, target_bed, tx_bed):
         return fig
 
     if args.external:
-        app.run_server(host='0.0.0.0', debug=True)
+        app.run_server(host='0.0.0.0', debug=True, port=int(args.port))
 
     else:
-        app.run_server(debug=True)
+        app.run_server(debug=True, port=int(args.port))
 
 
 if __name__ == '__main__':
@@ -361,6 +363,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--targets', required=True, help='target .bed')
     parser.add_argument('--tx', default=None, help='transcripts (or any other annotation) .bed')
     parser.add_argument('--external', action='store_true', default=False)
+    parser.add_argument('--port', default=8050)
     args = parser.parse_args()
     dash_lrt(args.plotdir, args.targets, args.tx)
     
