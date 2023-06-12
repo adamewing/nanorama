@@ -22,16 +22,14 @@ options:
   -r REF, --ref REF      reference genome .fasta
   -t TARGETS, --targets  TARGETS target .bed
   -d PLOTDIR, --plotdir  PLOTDIR output directory
-  --maponly              run mapper only, do not start viewer in background
 ```
 Example:
 ```
 lrm_mapper.py -o path/to/fastq_pass -o path/to/fastq_fail -r hg38.fasta -t RRMS.bed -d example_output
 ```
 Where `-o` points to the directory where fastq files are being deposited by MinKNOW (you'll need basecalling on, fast model is fine).
-Unless `--maponly` is given, the [dash](https://plotly.com/dash/)-based UI will load within a few minutes, after the first .fastq is finished processing. To view the UI, go to [http://127.0.0.1:8050](http://127.0.0.1:8050).
 
-You can also start the UI independently of `lrm_mapper.py`:
+Once at least one fastq has been processed, you can start the UI:
 ```
 $ lrm_viewer.py -h
 usage: lrm_viewer.py [-h] -d PLOTDIR -t TARGETS [--tx TX] [--external]
