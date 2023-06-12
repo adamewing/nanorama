@@ -44,12 +44,12 @@ options:
   -t TARGETS, --targets TARGETS target .bed
   --tx TX               transcripts (or any other annotation) .bed
   --external
+  --port
 ```
 The `-d` and `-t` options should match those given to `lrm_mapper.py`. The `--tx` option can be used to show an additional track from a .bed file (optionally BED3+1 with column 4 being an annotation).
 
-A running example of the UI may be accessed [here](http://genome.coffee:8050), if that is inaccessible (down or your local IT policy blocks port 8050) here's a screenshot:
+A running example of the UI may be accessed [here](http://genome.coffee:8055), if that is inaccessible (down or your local IT policy blocks the port) here's a screenshot:
 
-![screencapture-genome-coffee-8050-2023-06-06-13_00_06](https://github.com/adamewing/ont-lrm/assets/1037202/0ccd0743-4761-4ca0-8528-978bd1945b5c)
-
+![screencapture-genome-coffee-8055-2023-06-12-13_48_09](https://github.com/adamewing/ont-lrm/assets/1037202/e5b84649-63a9-4590-8fc1-cc4b060c13ab)
 
 
