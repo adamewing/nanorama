@@ -6,15 +6,14 @@ import argparse
 import subprocess
 import psutil
 
-from time import sleep, time_ns
+from time import sleep
 from collections import defaultdict as dd
-from operator import itemgetter
 from uuid import uuid4
 
 import pysam
 import pandas as pd
 
-import plotly.express as px
+import plotext as plt
 
 from bx.intervals.intersection import Intersecter, Interval
 
@@ -108,7 +107,7 @@ def start_dash(plotdir, targets):
     return dash_proc
 
 
-def map_reads(fastq, ref, read_data, targets, sample_name, threads=8):
+def map_reads(fastq, ref, read_data, targets, sample_name, threads=3):
 
     FNULL = open(os.devnull, 'w')
 
@@ -172,6 +171,54 @@ def enrich(df, genome_len, target_len):
             enrich_data.loc[str(uuid4())] = [minlen, target_cov, offtgt_cov, enr, sample]
 
     return enrich_data
+
+
+def plot_read_data(read_data):
+    plt.clf()
+    samples = read_data['sample'].unique()
+
+    categories = []
+    means = []
+
+    for sample in samples:
+        categories.append(sample+'_ON')
+        categories.append(sample+'_OFF')
+
+        means.append(read_data[(read_data['targeted'] == 'Y')&(read_data['sample']==sample)]['length'].mean())
+        means.append(read_data[(read_data['targeted'] == 'N')&(read_data['sample']==sample)]['length'].mean())
+
+    plt.simple_bar(categories, means, width=int(plt.tw()*0.67), title='current mean read length')
+    plt.show()
+
+
+def plot_enrich_data(enrich_data):
+    plt.clf()
+    plt.theme('pro')
+    samples = enrich_data['sample'].unique()
+    xticks = list(map(str, sorted(enrich_data['min_length'].unique())))
+
+    for sample in samples:
+        plt.plot(enrich_data['enrichment'][enrich_data['sample'] == sample], label=sample)
+    
+    plt.plot_size(int(plt.tw()*0.67), int(plt.th()*0.4))
+    plt.ylim(0, enrich_data['enrichment'].max())
+    plt.xticks(list(range(len(xticks))), xticks)
+    plt.xlabel('read length')
+    plt.ylabel('enrichment')
+    plt.show()
+
+def info_screen(genome_len, target_len, read_data, enrich_data, last_file, file_count):
+    plt.clt()
+    print(f'\ngenome length: {genome_len}')
+    print(f'target length: {target_len} ({target_len/genome_len*100}%)\n')
+    print(f'fastqs processed: {file_count}')
+    print(f'reads processed: {len(read_data.index)}')
+    print(f'last fastq: {last_file}')
+    print(f'\nmean read lengths:')
+    plot_read_data(read_data)
+    print(f'\nenrichment vs read length:')
+    plot_enrich_data(enrich_data)
+    print('\n')
 
 
 def main(args):
@@ -239,15 +286,17 @@ def main(args):
 
                         logger.info(f'mapping {fn} and updating read data')
 
-                        read_data = map_reads(outdir+'/'+fn, mmi_fn, read_data, targets, sample_names[outdir])
+                        read_data = map_reads(outdir+'/'+fn, mmi_fn, read_data, targets, sample_names[outdir], threads=int(args.threads))
                         read_data.to_csv(args.plotdir+'/read_data.csv')
-                        logger.info(f'saved current data to {args.plotdir}/read_data.csv')
+                        #logger.info(f'saved current data to {args.plotdir}/read_data.csv')
 
                         enrich_data = enrich(read_data, genome_len, target_len)
                         enrich_data.to_csv(args.plotdir+'/enrichment_data.csv')
-                        logger.info(f'saved current data to {args.plotdir}/enrichment_data.csv')
+                        #logger.info(f'saved current data to {args.plotdir}/enrichment_data.csv')
 
                         done_fastqs[fn] = True
+
+                        info_screen(genome_len, target_len, read_data, enrich_data, fn, len(done_fastqs))
 
         sleep(2.0)
 
@@ -258,6 +307,7 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--ref', required=True, help='reference genome .fasta')
     parser.add_argument('-t', '--targets', required=True, help='target .bed')
     parser.add_argument('-d', '--plotdir', required=True, help='output directory')
+    parser.add_argument('--threads', default=3, help='number of threads for minimap2 (default=3)')
     args = parser.parse_args()
     main(args)
 

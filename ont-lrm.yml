@@ -11,6 +11,8 @@ dependencies:
   - dash-html-components=2.0.0=pyhd8ed1ab_1
   - samtools=1.17=hd87286a_1
   - minimap2=2.26=he4a0461_1
+  - pip=23.1.2=pyhd8ed1ab_0
   - pip:
       - bx-python==0.9.0
       - pysam==0.21.0
+      - plotext==5.2.8

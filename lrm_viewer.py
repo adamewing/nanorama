@@ -24,7 +24,6 @@ logger.setLevel(logging.INFO)
 
 def load_data(plotdir):
     logger.info(f'load {plotdir}/read_data.csv')
-    #sz = os.path.getsize(plotdir+'/read_data.csv')
     return pd.read_csv(plotdir+'/read_data.csv')
 
 
@@ -169,8 +168,6 @@ def dash_lrt(plotdir, target_bed, tx_bed):
 
         df_view = df[(df['chrom'] == chr) & (df['start'] >= start) & (df['end'] <= end)]
 
-        #scatter_fig = go.Figure()
-
         samples = df['sample'].unique()
 
         scatter_fig = make_subplots(rows=len(samples), cols=1, shared_xaxes=True, vertical_spacing=0.05, subplot_titles=samples)
@@ -194,8 +191,6 @@ def dash_lrt(plotdir, target_bed, tx_bed):
             )
 
         scatter_fig.update_layout(
-            #xaxis_title="Genome Position (green = targets)",
-            #yaxis_title="Log Read Length",
             height=600,
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
@@ -262,7 +257,7 @@ def dash_lrt(plotdir, target_bed, tx_bed):
 
         font_vis = 'rgba(0,0,0,0)'
 
-        if end-start < 1e6:
+        if end-start < 4e5:
             font_vis = 'black'
 
         for i in range(len(samples)):
