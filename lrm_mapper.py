@@ -221,8 +221,6 @@ def main(args):
 
     done_fastqs = {}
 
-    started_dash = False
-
     outdirs = args.outdir[0]
     sample_names = infer_sample_names(outdirs)
 
@@ -249,10 +247,6 @@ def main(args):
                         enrich_data.to_csv(args.plotdir+'/enrichment_data.csv')
                         logger.info(f'saved current data to {args.plotdir}/enrichment_data.csv')
 
-                        if not started_dash and not args.maponly:
-                            start_dash(args.plotdir, args.targets)
-                            started_dash = True
-
                         done_fastqs[fn] = True
 
         sleep(2.0)
@@ -264,7 +258,6 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--ref', required=True, help='reference genome .fasta')
     parser.add_argument('-t', '--targets', required=True, help='target .bed')
     parser.add_argument('-d', '--plotdir', required=True, help='output directory')
-    parser.add_argument('--maponly', action='store_true', default=False, help='run mapper only, do not start viewer in background')
     args = parser.parse_args()
     main(args)
 
