@@ -175,19 +175,24 @@ def enrich(df, genome_len, target_len):
 
 def plot_read_data(read_data):
     plt.clf()
+    plt.theme('pro')
     samples = read_data['sample'].unique()
 
-    categories = []
+    #categories = []
     means = []
+    ratios = []
 
     for sample in samples:
-        categories.append(sample+'_ON')
-        categories.append(sample+'_OFF')
+        #categories.append(sample+'_ON')
+        #categories.append(sample+'_OFF')
 
-        means.append(read_data[(read_data['targeted'] == 'Y')&(read_data['sample']==sample)]['length'].mean())
-        means.append(read_data[(read_data['targeted'] == 'N')&(read_data['sample']==sample)]['length'].mean())
+        mean_on = read_data[(read_data['targeted'] == 'Y')&(read_data['sample']==sample)]['length'].mean()
+        mean_off = read_data[(read_data['targeted'] == 'N')&(read_data['sample']==sample)]['length'].mean()
 
-    plt.simple_bar(categories, means, width=int(plt.tw()*0.67), title='current mean read length')
+        ratios.append(mean_on/mean_off)
+
+
+    plt.simple_bar(samples, ratios, width=int(plt.tw()*0.67), title='current on/off ratio: mean read length')
     plt.show()
 
 
@@ -200,7 +205,7 @@ def plot_enrich_data(enrich_data):
     for sample in samples:
         plt.plot(enrich_data['enrichment'][enrich_data['sample'] == sample], label=sample)
     
-    plt.plot_size(int(plt.tw()*0.67), int(plt.th()*0.4))
+    plt.plot_size(int(plt.tw()*0.67), int(plt.th()*0.5))
     plt.ylim(0, enrich_data['enrichment'].max())
     plt.xticks(list(range(len(xticks))), xticks)
     plt.xlabel('read length')
@@ -210,11 +215,10 @@ def plot_enrich_data(enrich_data):
 def info_screen(genome_len, target_len, read_data, enrich_data, last_file, file_count):
     plt.clt()
     print(f'\ngenome length: {genome_len}')
-    print(f'target length: {target_len} ({target_len/genome_len*100}%)\n')
+    print(f'target length: {target_len} ({target_len/genome_len*100:.2f}%)\n')
     print(f'fastqs processed: {file_count}')
     print(f'reads processed: {len(read_data.index)}')
-    print(f'last fastq: {last_file}')
-    print(f'\nmean read lengths:')
+    print(f'last fastq: {last_file}\n')
     plot_read_data(read_data)
     print(f'\nenrichment vs read length:')
     plot_enrich_data(enrich_data)
@@ -276,27 +280,34 @@ def main(args):
         logger.info(f'{path}: {name}')
 
     while True:
+        new_fastqs = dd(list)
         for outdir in outdirs:
             for fn in os.listdir(outdir):
                 if fn.endswith('.fastq') or fn.endswith('.fastq.gz'):
                     if fn not in done_fastqs:
-                        if check_fopen(fn):
-                            logger.info(f'file is open: {fn}, skip for now')
-                            continue
+                        new_fastqs[outdir].append(fn)
 
-                        logger.info(f'mapping {fn} and updating read data')
+        for outdir in new_fastqs:
+            if len(new_fastqs[outdir]) > 0:
+                fn = new_fastqs[outdir].pop()
 
-                        read_data = map_reads(outdir+'/'+fn, mmi_fn, read_data, targets, sample_names[outdir], threads=int(args.threads))
-                        read_data.to_csv(args.plotdir+'/read_data.csv')
-                        #logger.info(f'saved current data to {args.plotdir}/read_data.csv')
+                if check_fopen(fn):
+                    logger.info(f'file is open: {fn}, skip for now')
+                    continue
 
-                        enrich_data = enrich(read_data, genome_len, target_len)
-                        enrich_data.to_csv(args.plotdir+'/enrichment_data.csv')
-                        #logger.info(f'saved current data to {args.plotdir}/enrichment_data.csv')
+                logger.info(f'mapping {fn} and updating read data')
 
-                        done_fastqs[fn] = True
+                read_data = map_reads(outdir+'/'+fn, mmi_fn, read_data, targets, sample_names[outdir], threads=int(args.threads))
+                read_data.to_csv(args.plotdir+'/read_data.csv')
+                #logger.info(f'saved current data to {args.plotdir}/read_data.csv')
 
-                        info_screen(genome_len, target_len, read_data, enrich_data, fn, len(done_fastqs))
+                enrich_data = enrich(read_data, genome_len, target_len)
+                enrich_data.to_csv(args.plotdir+'/enrichment_data.csv')
+                #logger.info(f'saved current data to {args.plotdir}/enrichment_data.csv')
+
+                done_fastqs[fn] = True
+
+                info_screen(genome_len, target_len, read_data, enrich_data, fn, len(done_fastqs))
 
         sleep(2.0)
 
