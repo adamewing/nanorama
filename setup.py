@@ -4,13 +4,13 @@ from setuptools import setup, find_packages
 
 setup(
     name='nanorama',
-    version='0.1.0',
+    version='v0.1.0',
     author='Adam Ewing',
     author_email='adam.ewing@gmail.com',
     description=("read monitor for targeted sequencing"),
     license='MIT',
     url='https://github.com/adamewing/nanorama',
-    download_url='https://github.com/adamewing/nanorama/archive/refs/tags/0.1.0.tar.gz',
+    download_url='https://github.com/adamewing/nanorama/archive/refs/tags/v0.1.0.tar.gz',
     scripts=['nanorama-map', 'nanorama-view'],
     packages=find_packages(),
     install_requires = [
