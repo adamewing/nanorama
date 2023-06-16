@@ -1,5 +1,5 @@
-# ont-lrm
-ONT Live Read Monitor: monitor your adaptive sampling run in real time (or afterwards)
+# nanorama
+Monitor your adaptive sampling run in real time (or afterwards).
 
 ### Install:
 ```
