@@ -29,7 +29,7 @@ lrm_mapper.py -o path/to/fastq_pass -o path/to/fastq_fail -r hg38.fasta -t RRMS.
 ```
 Where `-o` points to the directory where fastq files are being deposited by MinKNOW (you'll need basecalling on, fast model is fine). Once it has started processing .fastq files it outputs statistics to the terminal using [plotext](https://github.com/piccolomo/plotext):
 
-![terminal plots](https://github.com/adamewing/nanorama/assets/1037202/91681ef1-f72c-40b8-b2f8-ea6fcec151f7)
+![Untitled](https://github.com/adamewing/nanorama/assets/1037202/74c50bd5-148d-487b-9363-3b22953fb9f9)
 
 Once at least one fastq has been processed, you can start the web UI:
 ```
