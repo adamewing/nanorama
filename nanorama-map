@@ -100,13 +100,6 @@ def infer_sample_names(paths):
     return sample_names
 
 
-def start_dash(plotdir, targets):
-    cmd = ['lrm_viewer.py', '-d', plotdir, '-t', targets]
-    #dash_proc = subprocess.Popen(cmd, start_new_session=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    dash_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    return dash_proc
-
-
 def map_reads(fastq, ref, read_data, targets, sample_name, threads=3):
 
     FNULL = open(os.devnull, 'w')
@@ -177,15 +170,9 @@ def plot_read_data(read_data):
     plt.clf()
     plt.theme('pro')
     samples = read_data['sample'].unique()
-
-    #categories = []
-    means = []
     ratios = []
 
     for sample in samples:
-        #categories.append(sample+'_ON')
-        #categories.append(sample+'_OFF')
-
         mean_on = read_data[(read_data['targeted'] == 'Y')&(read_data['sample']==sample)]['length'].mean()
         mean_off = read_data[(read_data['targeted'] == 'N')&(read_data['sample']==sample)]['length'].mean()
 

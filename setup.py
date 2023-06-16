@@ -3,15 +3,15 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='ont-lrm',
+    name='nanorama',
     version='0.1.0',
     author='Adam Ewing',
     author_email='adam.ewing@gmail.com',
-    description=("live read monitor"),
+    description=("read monitor for targeted sequencing"),
     license='MIT',
-    url='https://github.com/adamewing/ont-lrm',
-    download_url='https://github.com/adamewing/ont-lrm/archive/refs/tags/0.1.0.tar.gz',
-    scripts=['lrm_mapper.py', 'lrm_viewer.py'],
+    url='https://github.com/adamewing/nanorama',
+    download_url='https://github.com/adamewing/nanorama/archive/refs/tags/0.1.0.tar.gz',
+    scripts=['nanorama-map', 'nanorama-view'],
     packages=find_packages(),
     install_requires = [
         'pysam',

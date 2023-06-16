@@ -1,4 +1,4 @@
-name: ont-lrm
+name: nanorama
 channels:
   - bioconda
   - conda-forge
