@@ -50,6 +50,6 @@ The `-d` and `-t` options should match those given to `lrm_mapper.py`. The `--tx
 
 A running example of the UI may be accessed [here](http://genome.coffee:8055), if that is inaccessible (down or your local IT policy blocks the port) here's a screenshot:
 
-![screencapture-genome-coffee-8055-2023-06-12-13_48_09](https://github.com/adamewing/nanorama/assets/1037202/e5b84649-63a9-4590-8fc1-cc4b060c13ab)
+![screencapture-genome-coffee-8055-2023-06-12-13_48_09](https://github.com/adamewing/nanorama/assets/1037202/e1fb3737-a7a7-49f2-8d25-f69bd4772fae)
 
 
