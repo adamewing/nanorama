@@ -6,6 +6,7 @@ import argparse
 import subprocess
 import psutil
 
+from random import shuffle
 from time import sleep
 from collections import defaultdict as dd
 from uuid import uuid4
@@ -126,7 +127,9 @@ def map_reads(fastq, ref, read_data, targets, sample_name, threads=3):
                     target = f'{read.reference_name}:{t.start}-{t.end}'
                     targeted = 'Y'
 
-            read_data.loc[str(uuid4())] = [target, targeted, read.reference_name, read.reference_start, read.reference_end, len(read.seq), np.log10(len(read.seq)), sample_name]
+            mean_qual = np.mean(read.query_qualities)
+
+            read_data.loc[str(uuid4())] = [target, targeted, read.reference_name, read.reference_start, read.reference_end, mean_qual, len(read.seq), np.log10(len(read.seq)), sample_name]
             r += 1
 
     logger.info(f'mapped {r} reads from {fastq}')
@@ -152,7 +155,7 @@ def enrich(df, genome_len, target_len):
 
     sample_names = list(set(df['sample']))
 
-    for minlen in range(100,1225,25):
+    for minlen in range(0,16000,2000):
         for sample in sample_names:
             df_len = df[df['length'] >= minlen]
             df_len = df_len[df_len['sample'] == sample]
@@ -171,15 +174,29 @@ def plot_read_data(read_data):
     plt.theme('pro')
     samples = read_data['sample'].unique()
     ratios = []
+    means = []
+    quals = []
 
     for sample in samples:
         mean_on = read_data[(read_data['targeted'] == 'Y')&(read_data['sample']==sample)]['length'].mean()
         mean_off = read_data[(read_data['targeted'] == 'N')&(read_data['sample']==sample)]['length'].mean()
 
+        qual_on = read_data[(read_data['targeted'] == 'Y')&(read_data['sample']==sample)]['mean_qual'].mean()
+        qual_off = read_data[(read_data['targeted'] == 'N')&(read_data['sample']==sample)]['mean_qual'].mean()
+
         ratios.append(mean_on/mean_off)
+        means.append(mean_on)
+        means.append(mean_off)
+        quals.append(qual_on)
+        quals.append(qual_off)
 
 
-    plt.simple_bar(samples, ratios, width=int(plt.tw()*0.67), title='current on/off ratio: mean read length')
+    if len(samples) > 1:
+        plt.simple_bar(samples, ratios, width=int(plt.tw()*0.67), title='current on/off ratio: mean read length')
+    else:
+        plt.simple_bar(['ON', 'OFF'], means, width=int(plt.tw()*0.67), title='current on/off ratio: mean read length')
+        #plt.simple_bar(['ON', 'OFF'], quals, width=int(plt.tw()*0.67), title='current mean on quality vs off quality')
+
     plt.show()
 
 
@@ -219,7 +236,7 @@ def main(args):
     chrom_bins = dd(dict)
     chrom_lens = {}
 
-    read_data = pd.DataFrame(columns=['target', 'targeted', 'chrom', 'start', 'end', 'length', 'log10_length', 'sample'])
+    read_data = pd.DataFrame(columns=['target', 'targeted', 'chrom', 'start', 'end', 'mean_qual', 'length', 'log10_length', 'sample'])
 
     if os.path.exists(args.plotdir):
         logger.warning(f'output directory already exists: {args.plotdir}')
@@ -274,6 +291,12 @@ def main(args):
                     if fn not in done_fastqs:
                         new_fastqs[outdir].append(fn)
 
+            if args.shuffle:
+                shuffle(new_fastqs[outdir])
+
+
+
+
         for outdir in new_fastqs:
             if len(new_fastqs[outdir]) > 0:
                 fn = new_fastqs[outdir].pop()
@@ -305,6 +328,7 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--ref', required=True, help='reference genome .fasta')
     parser.add_argument('-t', '--targets', required=True, help='target .bed')
     parser.add_argument('-d', '--plotdir', required=True, help='output directory')
+    parser.add_argument('--shuffle', action='store_true', default=False)
     parser.add_argument('--threads', default=3, help='number of threads for minimap2 (default=3)')
     args = parser.parse_args()
     main(args)
