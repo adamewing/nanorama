@@ -155,7 +155,7 @@ def enrich(df, genome_len, target_len):
 
     sample_names = list(set(df['sample']))
 
-    for minlen in range(0,16000,2000):
+    for minlen in range(0,5000,500):
         for sample in sample_names:
             df_len = df[df['length'] >= minlen]
             df_len = df_len[df_len['sample'] == sample]
@@ -293,8 +293,6 @@ def main(args):
 
             if args.shuffle:
                 shuffle(new_fastqs[outdir])
-
-
 
 
         for outdir in new_fastqs:
