@@ -276,7 +276,7 @@ def main(args):
 
     done_fastqs = {}
 
-    outdirs = args.outdir[0]
+    outdirs = [d[0] for d in args.outdir]
     sample_names = infer_sample_names(outdirs)
 
     logger.info('inferred sample names from paths:')
